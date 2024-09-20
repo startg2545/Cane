@@ -121,6 +121,7 @@ def generate_sample_data():
     })
 
 def LSTM_model():
+    max_len = 5
     model = Sequential()
     model.add(Embedding(input_dim=10, output_dim=8, input_length=max_len))  # input_dim: ขนาดของ vocab, output_dim: ขนาดของ embedding
     model.add(LSTM(64, return_sequences=True))  # LSTM layer
@@ -130,10 +131,9 @@ def LSTM_model():
     return model
 
 def model(df):
-    X = df[['NDVI', 'EVI', 'LAI', 'SAVI', 'MSAVI']]
+    X = df[['ndvi_day1', 'ndvi_day2', 'ndvi_day3', ..., 'ndvi_day2x']]
     y = df['burning_days']
 
-    max_len = 5
     X = pad_sequences(X, maxlen=max_len)
     y = to_categorical(y, num_classes=2)
 
@@ -318,8 +318,8 @@ def main():
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    if run_button:
-        model()
+    # if run_button:
+    #     model()
 
 if __name__ == "__main__":
     main()
