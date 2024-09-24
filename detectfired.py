@@ -5,11 +5,15 @@ import pandas as pd
 import random
 import plotly.express as px
 import numpy as np
+import os
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Embedding, Dropout
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
+from datetime import datetime
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow warnings
 
 # All 77 Thai provinces with their approximate coordinates
 THAI_PROVINCES = {
@@ -92,6 +96,13 @@ THAI_PROVINCES = {
     "Yasothon": (15.7921, 104.1458)
 }
 
+def burned_rai_calculation(start_date, end_date, provinces, historical_burning_dates):
+    burned_rai = 100
+    return burned_rai
+
+provinces = list(THAI_PROVINCES.keys())
+burned_rais = [random.randint(100, 1000) for _ in range(len(provinces))]
+
 def read_shapefile(uploaded_file):
     # Read the uploaded zipfile
     zip_file = zipfile.ZipFile(uploaded_file)
@@ -104,20 +115,36 @@ def read_shapefile(uploaded_file):
         gdf = gpd.read_file(shp_file)
     
     return gdf
+
+def risk_calculation(burning_days):
+    risks = []
+    for day in burning_days:
+        if day <= 3:
+            risks.append(80)
+        elif 4 <= day <= 7:
+            risks.append(50)
+        else:
+            risks.append(20)
+    return risks
+        
+
 def generate_sample_data():
-    areas = list(THAI_PROVINCES.keys())
-    risks = [random.uniform(0, 100) for _ in range(len(areas))]
-    days = [random.randint(1, 16) for _ in range(len(areas))]
-    sizes = [random.randint(100, 1000) for _ in range(len(areas))]
-    carbon = [size * 8 for size in sizes]  # 8 tons of carbon per rai
+    # days = [random.randint(1, 16) for _ in range(len(areas))]
+    ndvi_data = [random.uniform(0, 1) for _ in range(70) for _ in range(600)]  # change
+    burning_points = [ random.randint(10,20) for _ in range(len(provinces))]  # change
+    for burning_point in burning_points:
+        predicted_burning_days = model.predict(ndvi_data)  # change
+    # risks = [random.uniform(0, 100) for _ in range(len(areas))]
+    risks = risk_calculation(burning_days)
+    carbons = [burned_rai * 17.6 for burned_rai in burned_rais]  # 17.6 tons of carbon per rai
     return pd.DataFrame({
-        'Area': areas,
+        'Province': provinces,
         'Risk': risks,
-        'Latitude': [THAI_PROVINCES[area][0] for area in areas],
-        'Longitude': [THAI_PROVINCES[area][1] for area in areas],
-        'Day': days,
-        'Size': sizes,
-        'Carbon': carbon
+        'Latitude': [THAI_PROVINCES[province][0] for province in provinces],
+        'Longitude': [THAI_PROVINCES[province][1] for province in provinces],
+        'Day': predicted_burning_days,
+        'Burned Rai': burned_rais,
+        'Carbon': carbons
     })
 
 def LSTM_model():
@@ -129,19 +156,6 @@ def LSTM_model():
     model.add(Dense(2, activation='softmax'))  # Output layer สำหรับ 2 คลาส
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
-
-def model(df):
-    X = df[['ndvi_day1', 'ndvi_day2', 'ndvi_day3', ..., 'ndvi_day2x']]
-    y = df['burning_days']
-
-    X = pad_sequences(X, maxlen=max_len)
-    y = to_categorical(y, num_classes=2)
-
-    model = LSTM_model()
-    model.fit(X, y, epochs=5, batch_size=1, validation_split=0.2)
-
-    prediction = model.predict(X)
-    print("Predictions:", prediction)
 
 def model_evaluation(df):
     X = df[['NDVI', 'EVI', 'LAI', 'SAVI', 'MSAVI']]
@@ -278,7 +292,8 @@ def main():
         folium_static(m, width=800, height=400)
         
         # Amount of net carbon
-        st.subheader("Amount of net carbon (8 ton/rai)")
+
+        st.subheader("Amount of net carbon ( 8 tons of CO2 / rai)")
         fig = px.bar(filtered_data, x='Area', y='Carbon', color='Risk',
                      labels={'Carbon': 'Net Carbon (tons)', 'Area': 'Province'},
                      title='Net Carbon by Province',
@@ -296,8 +311,8 @@ def main():
         st.markdown('<h3 class="dashboard-title">Top 20 Fire Risk Areas (Next 16 Days)</h3>', unsafe_allow_html=True)
         st.markdown('<div class="scrollable-risk-area">', unsafe_allow_html=True)
         
-        # Sort the filtered data by Risk (descending), Day, and Size
-        sorted_data = filtered_data.sort_values(['Risk', 'Day', 'Size'], ascending=[False, True, False])
+        # Sort the filtered data by Risk (descending), Day, and Rai
+        sorted_data = filtered_data.sort_values(['Risk', 'Day', 'Rai'], ascending=[False, True, False])
         
         # Display top 20 areas (or all if less than 20)
         for _, row in sorted_data.head(20).iterrows():
@@ -312,7 +327,7 @@ def main():
             <div class="risk-item {risk_class}">
                 <span class="risk-value">Risk: {row['Risk']:.2f}%</span><br>
                 <strong>{row['Area']}</strong><br>
-                Day: {row['Day']} | Size: {row['Size']} rai
+                Day: {row['Day']} | Size: {row['Rai']} rai
             </div>
             """, unsafe_allow_html=True)
         
