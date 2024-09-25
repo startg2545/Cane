@@ -1,6 +1,6 @@
 import streamlit as st
-import folium
 from streamlit_folium import folium_static
+import folium  # Add this line
 import pandas as pd
 import random
 import plotly.express as px
@@ -249,30 +249,50 @@ def main():
     # Main content
     st.title("Hotspot Prediction")
     
-    # Province selection with dropdown
+     # Province selection with dropdown
     selected_province = st.selectbox("Choose a province:", ["All Provinces"] + list(THAI_PROVINCES.keys()))
 
     # Filter data based on selection
     if selected_province and selected_province != "All Provinces":
         filtered_data = st.session_state.data[st.session_state.data['Area'] == selected_province]
+        center_lat, center_lon = THAI_PROVINCES[selected_province]
+        zoom_start = 16  # Closer zoom for a specific province
     else:
         filtered_data = st.session_state.data
-    
+        center_lat, center_lon = 13.7563, 100.5018  # Center of Thailand
+        zoom_start = 6  # Default zoom for all of Thailand
+
     col1, col2 = st.columns([2, 1])
     
     with col1:
         # Map
         st.subheader("Map of Fire Risk Areas")
-        center_lat, center_lon = 13.7563, 100.5018  # Center of Thailand
-        m = folium.Map(location=[center_lat, center_lon], zoom_start=6)
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom_start)
         
         for _, row in filtered_data.iterrows():
             color = 'red' if row['Risk'] > 66 else 'orange' if row['Risk'] > 33 else 'green'
-            folium.Marker(
-                [row['Latitude'], row['Longitude']],
-                popup=f"Area: {row['Area']}<br>Risk: {row['Risk']:.2f}%<br>Carbon: {row['Carbon']} tons",
-                tooltip=f"Area: {row['Area']}",
-                icon=folium.Icon(color=color)
+            
+            # Add circle with 500m radius (more transparent)
+            folium.Circle(
+                location=[row['Latitude'], row['Longitude']],
+                radius=500,  # 500 meters
+                color=color,
+                weight=2,  # Slightly thicker border for visibility
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.1,  # Increased transparency
+                popup=f"Area: {row['Area']}<br>Risk: {row['Risk']:.2f}%<br>Size: {row['Size']} rai"
+            ).add_to(m)
+            
+            # Add center point
+            folium.CircleMarker(
+                location=[row['Latitude'], row['Longitude']],
+                radius=3,  # Slightly larger for better visibility
+                color='red',
+                fill=True,
+                fill_color='red',
+                fill_opacity=1,
+                popup=f"Center of {row['Area']}<br>Risk: {row['Risk']:.2f}%"
             ).add_to(m)
         
         folium_static(m, width=800, height=400)
