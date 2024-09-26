@@ -92,6 +92,16 @@ THAI_PROVINCES = {
     "Yasothon": (15.7921, 104.1458)
 }
 
+burn_info = {
+    "Ranong": [
+        {"date": "2021-01-01", "location": (15.8661, 104.6289)},
+        {"date": "2021-01-02", "location": (16.8661, 105.6289)},
+        {"date": "2021-01-03", "location": (17.8661, 106.6289)},
+        {"date": "2021-01-04", "location": (18.8661, 107.6289)},
+        {"date": "2021-01-05", "location": (19.8661, 108.6289)},
+    ],
+}
+
 def read_shapefile(uploaded_file):
     # Read the uploaded zipfile
     zip_file = zipfile.ZipFile(uploaded_file)
@@ -197,6 +207,7 @@ def main():
     }
     .risk-item {
         padding: 0.5rem;
+        cursor: pointer;
         margin-bottom: 0.5rem;
         border-radius: 0.3rem;
     }
@@ -318,9 +329,13 @@ def main():
         
         # Sort the filtered data by Risk (descending), Day, and Size
         sorted_data = filtered_data.sort_values(['Risk', 'Day', 'Size'], ascending=[False, True, False])
+
+        # Form State Management
+        if 'selected_province' not in st.session_state:
+            st.session_state['selected_province'] = None
         
         # Display top 20 areas (or all if less than 20)
-        for _, row in sorted_data.head(20).iterrows():
+        for index, row in sorted_data.head(20).iterrows():
             if row['Risk'] > 66:
                 risk_class = "risk-high"
             elif row['Risk'] > 33:
@@ -328,18 +343,22 @@ def main():
             else:
                 risk_class = "risk-low"
             
-            st.markdown(f"""
-            <div class="risk-item {risk_class}">
-                <span class="risk-value">Risk: {row['Risk']:.2f}%</span><br>
-                <strong>{row['Area']}</strong><br>
-                Day: {row['Day']} | Size: {row['Size']} rai
-            </div>
-            """, unsafe_allow_html=True)
+            if st.button(f"{row['Area']} - Risk: {row['Risk']}%"):
+                st.session_state.selected_province = row['Area']
         
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # if run_button:
-    #     model()
+    if st.session_state.selected_province:
+        st.subheader(f"{st.session_state.selected_province} Information")
+        with st.form(key='area_form'):
+            st.markdown('<div class="dashboard-title">status </div>', unsafe_allow_html=True)
+            # Loop through the burn_info dictionary for the selected province
+            for index, burn in enumerate(burn_info[st.session_state.selected_province]):
+                st.markdown(f"Date: {burn['date']}")
+                st.markdown(f"Location: {burn['location']}")
+                st.markdown("---")
+                submit_button = st.form_submit_button(label=f"Submit{index}")
+                if submit_button:
+                    st.success(f"Submitted data for {st.session_state['selected_province']}: Size = {500} rai, Risk = {90}%, Days = {1}")
+
 
 if __name__ == "__main__":
     main()
