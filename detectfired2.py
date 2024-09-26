@@ -12,6 +12,7 @@ from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 
 # All 77 Thai provinces with their approximate coordinates
+
 THAI_PROVINCES = {
     "Amnat Charoen": (15.8661, 104.6289),
     "Ang Thong": (14.5896, 100.4549),
@@ -92,15 +93,9 @@ THAI_PROVINCES = {
     "Yasothon": (15.7921, 104.1458)
 }
 
-burn_info = {
-    "Phitsanulok": [
-        {"date": "2021-01-01", "location": (15.8661, 104.6289)},
-        {"date": "2021-01-02", "location": (16.8661, 105.6289)},
-        {"date": "2021-01-03", "location": (17.8661, 106.6289)},
-        {"date": "2021-01-04", "location": (18.8661, 107.6289)},
-        {"date": "2021-01-05", "location": (19.8661, 108.6289)},
-    ],
-}
+hotspot_lat_long = pd.read_csv('hotspotsugarcane_lat_long.csv')
+
+assumed_day_prediction = [ random.randint(10,30) for _ in range(len(hotspot_lat_long))]
 
 def read_shapefile(uploaded_file):
     # Read the uploaded zipfile
@@ -123,9 +118,9 @@ def generate_sample_data():
     return pd.DataFrame({
         'Area': areas,
         'Risk': risks,
-        'Latitude': [THAI_PROVINCES[area][0] for area in areas],
-        'Longitude': [THAI_PROVINCES[area][1] for area in areas],
-        'Day': days,
+        'Latitude': hotspot_lat_long['LATITUDE'],
+        'Longitude': hotspot_lat_long['LONGITUDE'],
+        'Day': assumed_day_prediction,
         'Size': sizes,
         'Carbon': carbon
     })
@@ -343,7 +338,7 @@ def main():
             else:
                 risk_class = "risk-low"
             
-            if st.button(f"{row['Area']} - Risk: {row['Risk']}%"):
+            if st.button(f"({row['Latitude']}, {row['Longitude']}) - Days: {assumed_day_prediction}%"):
                 st.session_state.selected_province = row['Area']
         
     if st.session_state.selected_province:
